@@ -167,7 +167,7 @@ if __name__ == '__main__':
     print("Encoding positions...")
 
     with torch.no_grad():
-        for i, (boards, metadata) in enumerate(dataloader):
+        for i, (boards, metadata, _) in enumerate(dataloader):
             boards = boards.to(device)
             metadata = metadata.to(device)
 
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     indices = np.random.choice(len(dataset), args.num_examples, replace=False)
 
     for i, idx in enumerate(indices):
-        board, metadata = dataset[idx]
+        board, metadata, _ = dataset[idx]
         # Encode single example
         latent_vec = encode_position(model, board, metadata, device=device)  # shape (1, latent_dim) in np
         # Decode back

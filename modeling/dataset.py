@@ -16,4 +16,5 @@ class ChessDataset(torch.utils.data.Dataset):
         with h5py.File(self.h5_path, 'r') as f:
             board = torch.FloatTensor(f['boards'][idx]).permute(2, 0, 1)
             metadata = torch.FloatTensor(f['metadata'][idx])
-            return board, metadata
+            evaluation = torch.tensor(f['evaluations'][idx], dtype=torch.float32)
+            return board, metadata, evaluation
