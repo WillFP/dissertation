@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
-from encode import fen_to_tensor
+from preprocess.encode import fen_to_tensor
 
 # Configuration
 STOCKFISH_PATH = "/opt/homebrew/bin/stockfish"

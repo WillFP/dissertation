@@ -20,7 +20,7 @@ def load_model(model_path, latent_dim=64, device='cpu'):
         model: Loaded ChessAutoencoder model
     """
     model = ChessAutoencoder(latent_dim=latent_dim)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model = model.to(device)
     model.eval()
     return model

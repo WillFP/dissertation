@@ -201,7 +201,7 @@ if __name__ == '__main__':
 
     # Load the pretrained autoencoder
     autoencoder = ChessAutoencoder(latent_dim=args.latent_dim)
-    autoencoder.load_state_dict(torch.load(args.autoencoder_path, map_location=device))
+    autoencoder.load_state_dict(torch.load(args.autoencoder_path, map_location=device, weights_only=True))
     autoencoder.eval()
 
     # Create the evaluation model
