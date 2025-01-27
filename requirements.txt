@@ -1,0 +1,7 @@
+h5py~=3.12.1
+torch~=2.5.1
+matplotlib~=3.10.0
+numpy~=2.2.2
+setuptools~=75.6.0
+chess~=1.11.1
+tqdm~=4.67.1
