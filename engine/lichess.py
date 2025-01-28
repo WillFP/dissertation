@@ -3,7 +3,7 @@ import chess
 import time
 from typing import Optional
 
-from engine.bot import predict_fen
+from engine.bot import get_best_move, load_models
 
 
 class LichessBot:
@@ -13,40 +13,25 @@ class LichessBot:
         self.client = berserk.Client(self.session)
         self.current_game: Optional[str] = None
         self.color: Optional[chess.Color] = None
-
-    def get_best_move(self, fen: str, is_white: bool) -> Optional[chess.Move]:
-        """Calculate the best move for the current position using the prediction function."""
-        board = chess.Board(fen)
-
-        if not board.legal_moves:
-            return None
-
-        best_move = None
-        best_score = -float('inf') if is_white else float('inf')
-
-        for move in board.legal_moves:
-            board_copy = board.copy()
-            board_copy.push(move)
-            score = predict_fen(board_copy.fen())
-            print(f"Move {move.uci()} has score {score} for {'white' if is_white else 'black'}")
-
-            if (is_white and score > best_score) or (not is_white and score < best_score):
-                best_score = score
-                best_move = move
-                print(f"New best move: {move.uci()}, score: {score}")
-
-        return best_move
+        autoencoder, evaluator = load_models()
+        self.autoencoder = autoencoder
+        self.evaluator = evaluator
 
     def handle_game_stream(self):
         """Main loop to handle incoming game events and challenges."""
         while True:
             try:
                 for event in self.client.bots.stream_incoming_events():
+                    print(f"Received event: {event}")
                     if event['type'] == 'challenge':
                         self.client.bots.accept_challenge(event['challenge']['id'])
                     elif event['type'] == 'gameStart':
+                        print(f"Starting game {event['game']['id']}")
                         self.current_game = event['game']['id']
                         self.play_game(event['game']['id'])
+                    elif event['type'] == 'gameFinish':
+                        print(f"Game {event['game']['id']} finished")
+                        self.current_game = None
             except Exception as e:
                 print(f"Error in game stream: {e}")
                 time.sleep(5)
@@ -88,7 +73,7 @@ class LichessBot:
     def make_move(self, game_id: str, fen: str, is_white: bool):
         """Calculate and execute the best move for the current position."""
         try:
-            move = self.get_best_move(fen, is_white)
+            move = get_best_move(fen, is_white, self.autoencoder, self.evaluator)
             if not move:
                 print("No legal moves available.")
                 return
@@ -101,7 +86,7 @@ class LichessBot:
 
 def main():
     """Entry point to start the bot."""
-    api_token = "lip_jDdpzsUIuxZhy1gIKgig"  # Replace with your actual token
+    api_token = "lip_4oQxjrYKYzKxrBEYlunq"  # Replace with your actual token
     bot = LichessBot(api_token)
 
     while True:

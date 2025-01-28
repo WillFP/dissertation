@@ -19,7 +19,11 @@ def train_evaluator(
         learning_rate=1e-4,
         device='cpu',
         model_save_path='models/best_eval_model.pt',
-        plot_save_path='models/plots/eval_loss.png'
+        plot_save_path='models/plots/eval_loss.png',
+        weight_decay=0.01,
+        scheduler_patience=5,
+        scheduler_factor=0.1,
+        early_stop_patience=0
 ):
     """
     Train an evaluation model to predict Stockfish eval from (board, metadata).
@@ -39,31 +43,39 @@ def train_evaluator(
         device: 'cpu', 'cuda', or 'mps'.
         model_save_path: Where to save the best model checkpoint.
         plot_save_path: Where to save the train/val loss plot.
+        weight_decay: Weight decay (L2 penalty) for the optimizer.
+        scheduler_patience: Patience epochs for LR reduction on plateau (0 disables).
+        scheduler_factor: Factor by which LR is reduced.
+        early_stop_patience: Early stopping patience epochs (0 disables).
 
     Returns:
         (train_losses, val_losses)
     """
     import matplotlib.pyplot as plt
+    import os
 
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     os.makedirs(os.path.dirname(plot_save_path), exist_ok=True)
 
-    # We do not train the autoencoder, so set it to eval
     autoencoder.to(device)
     autoencoder.eval()
-
     evaluator = evaluator.to(device)
 
-    optimizer = torch.optim.AdamW(evaluator.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(evaluator.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    # Initialize scheduler
+    scheduler = None
+    if scheduler_patience > 0:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min', patience=scheduler_patience, factor=scheduler_factor
+        )
 
     best_val_loss = float('inf')
     train_losses = []
     val_losses = []
+    epochs_no_improve = 0  # For early stopping
 
     for epoch in range(num_epochs):
-        # ---------------------------
-        #         TRAIN PHASE
-        # ---------------------------
         evaluator.train()
         running_train_loss = 0.0
         n_train_batches = 0
@@ -71,17 +83,12 @@ def train_evaluator(
         for board, metadata, evaluation in train_loader:
             board = board.to(device)
             metadata = metadata.to(device)
-            # evaluation shape: (batch,), we want (batch,1)
             evaluation = evaluation.to(device).unsqueeze(1)
 
-            # Encode with autoencoder (no grad)
             with torch.no_grad():
-                latent_vec = autoencoder.encode(board, metadata)  # shape (B, latent_dim)
+                latent_vec = autoencoder.encode(board, metadata)
 
-            # Forward pass of the evaluator
-            pred_eval = evaluator(latent_vec)  # shape (B,1)
-
-            # MSE loss
+            pred_eval = evaluator(latent_vec)
             loss = F.mse_loss(pred_eval, evaluation)
 
             optimizer.zero_grad()
@@ -91,16 +98,10 @@ def train_evaluator(
             running_train_loss += loss.item()
             n_train_batches += 1
 
-        if n_train_batches > 0:
-            epoch_train_loss = running_train_loss / n_train_batches
-        else:
-            epoch_train_loss = 0.0
-
+        epoch_train_loss = running_train_loss / n_train_batches if n_train_batches > 0 else 0.0
         train_losses.append(epoch_train_loss)
 
-        # ---------------------------
-        #       VALIDATION PHASE
-        # ---------------------------
+        # Validation phase
         evaluator.eval()
         running_val_loss = 0.0
         n_val_batches = 0
@@ -118,28 +119,33 @@ def train_evaluator(
                 running_val_loss += loss.item()
                 n_val_batches += 1
 
-        if n_val_batches > 0:
-            epoch_val_loss = running_val_loss / n_val_batches
-        else:
-            epoch_val_loss = 0.0
-
+        epoch_val_loss = running_val_loss / n_val_batches if n_val_batches > 0 else 0.0
         val_losses.append(epoch_val_loss)
 
-        # Save best model
+        # Update learning rate scheduler
+        if scheduler:
+            scheduler.step(epoch_val_loss)
+
+        # Check for improvement
         if epoch_val_loss < best_val_loss:
             best_val_loss = epoch_val_loss
+            epochs_no_improve = 0
             torch.save(evaluator.state_dict(), model_save_path)
             print(f"Epoch {epoch + 1}: new best val loss = {best_val_loss:.4f}. Model saved.")
+        else:
+            epochs_no_improve += 1
 
-        # Print summary
+        # Early stopping check
+        if 0 < early_stop_patience <= epochs_no_improve:
+            print(f"Early stopping at epoch {epoch + 1} (no improvement for {early_stop_patience} epochs).")
+            break
+
         print(
             f"Epoch {epoch + 1}/{num_epochs} | "
             f"Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}"
         )
 
-    # ---------------------------
-    #   PLOTTING
-    # ---------------------------
+    # Plotting
     epochs_range = range(1, len(train_losses) + 1)
     plt.figure(figsize=(10, 6))
     plt.plot(epochs_range, train_losses, label='Train Loss')

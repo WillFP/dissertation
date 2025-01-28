@@ -10,25 +10,20 @@ class ChessEvaluationCNN(nn.Module):
     def __init__(self, latent_dim=128):
         super().__init__()
         self.net = nn.Sequential(
-            # Reshape from (B, 128) -> (B, 1, 128),
-            # then convolve over the "128" dimension with 1 channel in.
-
-            # Conv1: 1->32 channels, kernel_size=3
-            nn.Conv1d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.Linear(latent_dim, 200),
+            nn.Linear(200, 100),
+            nn.BatchNorm1d(100),
+            nn.Dropout(0.1),
             nn.ReLU(),
-
-            # Conv2: 32->64 channels, kernel_size=3
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
+            nn.Linear(100, 50),
+            nn.BatchNorm1d(50),
+            nn.Dropout(0.1),
             nn.ReLU(),
-
-            # Global average pool over the spatial dimension (i.e., reduce from length=128 to length=1)
-            nn.AdaptiveAvgPool1d(output_size=1),
-
-            # Flatten from (B, 64, 1) to (B, 64)
-            nn.Flatten(),
-
-            # Finally, a linear layer for the single scalar evaluation output
-            nn.Linear(64, 1)
+            nn.Linear(50, 20),
+            nn.BatchNorm1d(20),
+            nn.ReLU(),
+            # Final layer for scalar evaluation output
+            nn.Linear(20, 1)
         )
 
     def forward(self, x):
@@ -39,6 +34,5 @@ class ChessEvaluationCNN(nn.Module):
           (batch_size, 1) => the predicted evaluation scores.
         """
         # Reshape to (batch_size, 1, 128) for 1D convolution
-        x = x.unsqueeze(1)  # Add a channel dimension
         out = self.net(x)
         return out

@@ -6,7 +6,7 @@ import chess
 import chess.engine
 import chess.pgn
 import h5py
-import numpy as np
+import numpy as n
 from tqdm import tqdm
 
 from preprocess.encode import fen_to_tensor
