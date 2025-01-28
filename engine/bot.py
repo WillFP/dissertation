@@ -10,6 +10,7 @@ from modeling.evaluation.predict import load_model as load_evaluator, predict_po
 evaluation_model_path = "models/best_eval_model.pt"
 autoencoder_model_path = "models/best_autoencoder.pt"
 
+
 def load_models():
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 
@@ -17,6 +18,7 @@ def load_models():
     evaluator = load_evaluator(evaluation_model_path, latent_dim=128, device=device)
 
     return autoencoder, evaluator
+
 
 def predict_fen(fen, autoencoder, evaluator):
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
@@ -35,72 +37,77 @@ def predict_fen(fen, autoencoder, evaluator):
 
 
 def get_best_move(fen: str, is_white: bool, autoencoder, evaluator) -> Optional[chess.Move]:
-    """Calculate the best move using optimized minimax with alpha-beta pruning."""
+    """Minimax with alpha-beta pruning using only neural network evaluations."""
     board = chess.Board(fen)
-
     if not board.legal_moves:
         return None
 
-    depth = 3  # Adjust depth based on performance needs
+    depth = 3
+    transposition_table = {}
 
     def order_moves(board: chess.Board) -> list[chess.Move]:
-        """Basic move ordering: captures first, then non-captures."""
+        """Order moves using game rules without any position evaluation."""
         return sorted(
             board.legal_moves,
-            key=lambda m: board.is_capture(m),
+            key=lambda m: (
+                board.is_capture(m),  # Captures first
+                bool(m.promotion),  # Promotions next
+                board.is_check()  # Checks next
+            ),
             reverse=True
         )
 
-    def alpha_beta(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
-        if depth == 0 or board.is_game_over():
-            return predict_fen(board.fen(), autoencoder, evaluator)
+    def alpha_beta(b: chess.Board, d: int, alpha: float, beta: float) -> float:
+        fen_key = b.fen()
+        if fen_key in transposition_table:
+            return transposition_table[fen_key]
 
-        is_maximizing = (board.turn == is_white)
-        best_value = -float('inf') if is_maximizing else float('inf')
+        if d == 0 or b.is_game_over():
+            return predict_fen(fen_key, autoencoder, evaluator)
 
-        for move in order_moves(board):
-            board.push(move)
-            current_eval = alpha_beta(board, depth - 1, alpha, beta)
-            board.pop()
+        is_maximizing = b.turn == is_white
+        best = -float('inf') if is_maximizing else float('inf')
+
+        for move in order_moves(b):
+            b.push(move)
+            eval = alpha_beta(b, d - 1, alpha, beta)
+            b.pop()
 
             if is_maximizing:
-                best_value = max(best_value, current_eval)
-                alpha = max(alpha, best_value)
+                best = max(best, eval)
+                alpha = max(alpha, best)
             else:
-                best_value = min(best_value, current_eval)
-                beta = min(beta, best_value)
+                best = min(best, eval)
+                beta = min(beta, best)
 
             if beta <= alpha:
                 break
 
-        return best_value
+        transposition_table[fen_key] = best
+        return best
 
     best_move = None
-    best_value = -float('inf') if is_white else float('inf')
-    alpha = -float('inf')
-    beta = float('inf')
+    best_eval = -float('inf') if is_white else float('inf')
+    alpha, beta = -float('inf'), float('inf')
 
     for move in order_moves(board):
         board.push(move)
-        current_eval = alpha_beta(board, depth - 1, alpha, beta)
+        eval = alpha_beta(board, depth - 1, alpha, beta)
         board.pop()
 
-        print(f"Move {move.uci()} has score {current_eval} for {'white' if is_white else 'black'}")
+        print(f"Move {move.uci()} score: {eval:.3f}")
 
-        if is_white:
-            if current_eval > best_value:
-                best_value = current_eval
-                best_move = move
-                print(f"New best: {move.uci()} ({current_eval})")
-            alpha = max(alpha, best_value)
-        else:
-            if current_eval < best_value:
-                best_value = current_eval
-                best_move = move
-                print(f"New best: {move.uci()} ({current_eval})")
-            beta = min(beta, best_value)
+        if (is_white and eval > best_eval) or (not is_white and eval < best_eval):
+            best_eval = eval
+            best_move = move
+            print(f"New best: {move.uci()} ({eval:.3f})")
 
-        if alpha >= beta:
-            break
+            if is_white:
+                alpha = max(alpha, eval)
+            else:
+                beta = min(beta, eval)
+
+            if alpha >= beta:
+                break
 
     return best_move
