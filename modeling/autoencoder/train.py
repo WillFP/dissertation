@@ -17,7 +17,7 @@ def train_autoencoder(
         num_epochs=20,
         learning_rate=1e-4,
         device='cpu',
-        model_save_path='models/best_autoencoder.pt',
+        model_save_path='models/autoencoder_250k.pt',
         plot_save_path='models/plots/autoencoder_loss.png'
 ):
     """
@@ -79,7 +79,7 @@ def train_autoencoder(
         running_train_mse = 0.0
         n_train_batches = 0
 
-        for board, metadata in train_loader:
+        for board, metadata, _ in train_loader:
             board = board.to(device)
             metadata = metadata.to(device)
 
@@ -117,7 +117,7 @@ def train_autoencoder(
         n_val_batches = 0
 
         with torch.no_grad():
-            for board, metadata in val_loader:
+            for board, metadata, _ in val_loader:
                 board = board.to(device)
                 metadata = metadata.to(device)
 
