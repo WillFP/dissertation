@@ -70,7 +70,8 @@ def train_evaluator(
             optimizer, mode='min', patience=scheduler_patience, factor=scheduler_factor
         )
 
-    best_val_loss = float('inf')
+    # Combine training and val loss, safe with large training sets
+    best_combined_loss = float('inf')
     train_losses = []
     val_losses = []
     epochs_no_improve = 0  # For early stopping
@@ -126,12 +127,14 @@ def train_evaluator(
         if scheduler:
             scheduler.step(epoch_val_loss)
 
+        epoch_combined_loss = epoch_train_loss + epoch_val_loss
+
         # Check for improvement
-        if epoch_val_loss < best_val_loss:
-            best_val_loss = epoch_val_loss
+        if epoch_combined_loss < best_combined_loss:
+            best_combined_loss = epoch_combined_loss
             epochs_no_improve = 0
             torch.save(evaluator.state_dict(), model_save_path)
-            print(f"Epoch {epoch + 1}: new best val loss = {best_val_loss:.4f}. Model saved.")
+            print(f"Epoch {epoch + 1}: new best combined loss = {epoch_combined_loss:.4f}. Model saved.")
         else:
             epochs_no_improve += 1
 
@@ -142,7 +145,7 @@ def train_evaluator(
 
         print(
             f"Epoch {epoch + 1}/{num_epochs} | "
-            f"Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}"
+            f"Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f} | Combined Loss: {epoch_combined_loss:.4f}"
         )
 
     # Plotting
@@ -158,7 +161,7 @@ def train_evaluator(
     plt.savefig(plot_save_path)
     plt.close()
 
-    print(f"Training complete. Best Val Loss: {best_val_loss:.4f}")
+    print(f"Training complete. Best Combined Loss: {best_combined_loss:.4f}")
     print(f"Loss plot saved to: {plot_save_path}")
 
     return train_losses, val_losses
@@ -176,6 +179,8 @@ if __name__ == '__main__':
                         help='Latent dimension used by the autoencoder')
     parser.add_argument('--autoencoder-path', type=str, required=True,
                         help='Path to the pretrained autoencoder weights (best_autoencoder.pt)')
+    parser.add_argument('--path', type=str, required=True,
+                        help='Path to the model')
     args = parser.parse_args()
 
     # Create necessary directories
@@ -205,13 +210,23 @@ if __name__ == '__main__':
         num_workers=0
     )
 
+    print("Loading autoencoder...")
+
     # Load the pretrained autoencoder
     autoencoder = ChessAutoencoder(latent_dim=args.latent_dim)
     autoencoder.load_state_dict(torch.load(args.autoencoder_path, map_location=device, weights_only=True))
     autoencoder.eval()
 
     # Create the evaluation model
+    # evaluator = ChessEvaluationCNN(latent_dim=args.latent_dim)
+
+    print("Loading evaluation model...")
+
+    # Load evaluation model
     evaluator = ChessEvaluationCNN(latent_dim=args.latent_dim)
+    evaluator.load_state_dict(torch.load(args.path, map_location=device, weights_only=True))
+
+    print("Training evaluation model...")
 
     # Train the evaluator
     train_evaluator(
@@ -220,5 +235,6 @@ if __name__ == '__main__':
         train_loader=train_loader,
         val_loader=val_loader,
         num_epochs=args.epochs,
-        device=device
+        device=device,
+        model_save_path=args.path
     )
