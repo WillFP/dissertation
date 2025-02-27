@@ -1,3 +1,5 @@
+import argparse
+
 import berserk
 import chess
 import time
@@ -7,13 +9,13 @@ from engine.bot import get_best_move, load_models
 
 
 class LichessBot:
-    def __init__(self, api_token: str):
+    def __init__(self, api_token: str, autoencoder_path: str, evaluation_path: str):
         """Initialize the Lichess bot with the provided API token."""
         self.session = berserk.TokenSession(api_token)
         self.client = berserk.Client(self.session)
         self.current_game: Optional[str] = None
         self.color: Optional[chess.Color] = None
-        autoencoder, evaluator = load_models()
+        autoencoder, evaluator = load_models(autoencoder_path, evaluation_path)
         self.autoencoder = autoencoder
         self.evaluator = evaluator
 
@@ -86,8 +88,17 @@ class LichessBot:
 
 def main():
     """Entry point to start the bot."""
-    api_token = "lip_4oQxjrYKYzKxrBEYlunq"  # Replace with your actual token
-    bot = LichessBot(api_token)
+
+    parser = argparse.ArgumentParser(description='Train an evaluation model using a pretrained autoencoder')
+    parser.add_argument('--autoencoder', type=str, required=True,
+                        help='Path to the autoencoder model')
+    parser.add_argument('--evaluation', type=str, required=True,
+                        help='Path to the evaluation model')
+
+    args = parser.parse_args()
+
+    api_token = "lip_4oQxjrYKYzKxrBEYlunq"
+    bot = LichessBot(api_token, args.autoencoder, args.evaluation)
 
     while True:
         try:

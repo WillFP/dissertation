@@ -6,8 +6,8 @@ import chess
 import chess.engine
 import chess.pgn
 import h5py
-import numpy as n
 from tqdm import tqdm
+import numpy as np
 
 from preprocess.encode import fen_to_tensor
 

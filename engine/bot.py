@@ -7,15 +7,17 @@ from typing import Optional
 from modeling.autoencoder.predict import load_model as load_autoencoder
 from modeling.evaluation.predict import load_model as load_evaluator, predict_position
 
-evaluation_model_path = "models/best_eval_model.pt"
-autoencoder_model_path = "models/best_autoencoder.pt"
 
-
-def load_models():
+def load_models(autoencoder_path: str, evaluation_path: str):
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 
-    autoencoder = load_autoencoder(autoencoder_model_path, latent_dim=128, device=device)
-    evaluator = load_evaluator(evaluation_model_path, latent_dim=128, device=device)
+    print(f"Loading autoencoder from {autoencoder_path}...")
+    autoencoder = load_autoencoder(autoencoder_path, latent_dim=128, device=device)
+
+    print(f"Loading evaluator from {evaluation_path}...")
+    evaluator = load_evaluator(evaluation_path, latent_dim=128, device=device)
+
+    print("Models loaded successfully.")
 
     return autoencoder, evaluator
 

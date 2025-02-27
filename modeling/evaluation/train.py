@@ -2,12 +2,41 @@ import argparse
 import os
 
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
+import torch.nn.functional as F
 
 from modeling.autoencoder import ChessAutoencoder
 from modeling.dataset import ChessDataset
 from modeling.evaluation import ChessEvaluationCNN
+
+
+def chess_position_loss(predicted, actual):
+    """
+    Custom loss function for chess position evaluation using pure PyTorch operations.
+    - Fixed device compatibility
+    - Added numerical stability
+    - Adjusted scaling factors
+    """
+    # Ensure tensors are on same device and cast properly
+    predicted = predicted.float()
+    actual = actual.float()
+
+    # Sign error penalty (1.0 where signs differ)
+    sign_error = (predicted * actual) < 0
+    sign_error = sign_error.float()  # Convert to 0/1 tensor
+
+    # Base MSE component with numerical stability
+    base_loss = torch.pow(predicted - actual, 2) / 400.0
+
+    # Sigmoid scaling using PyTorch's native implementation
+    magnitude_diff = torch.abs(predicted - actual)
+    scaled_magnitude = 2.0 * torch.sigmoid(magnitude_diff / 20.0)
+
+    # Combine components with stability epsilon
+    total_loss = (base_loss * scaled_magnitude) + (sign_error * 25.0)
+
+    # Mean reduction with non-zero division protection
+    return torch.mean(total_loss) + 1e-8
 
 
 def train_evaluator(
@@ -178,9 +207,11 @@ if __name__ == '__main__':
     parser.add_argument('--latent-dim', type=int, default=64,
                         help='Latent dimension used by the autoencoder')
     parser.add_argument('--autoencoder-path', type=str, required=True,
-                        help='Path to the pretrained autoencoder weights (best_autoencoder.pt)')
+                        help='Path to the pretrained autoencoder weights')
     parser.add_argument('--path', type=str, required=True,
-                        help='Path to the model')
+                        help='Path to save the model to')
+    parser.add_argument('--existing-model', type=str, default=None,
+                        help='Path to an existing model to continue training')
     args = parser.parse_args()
 
     # Create necessary directories
@@ -217,14 +248,13 @@ if __name__ == '__main__':
     autoencoder.load_state_dict(torch.load(args.autoencoder_path, map_location=device, weights_only=True))
     autoencoder.eval()
 
-    # Create the evaluation model
-    # evaluator = ChessEvaluationCNN(latent_dim=args.latent_dim)
-
     print("Loading evaluation model...")
-
-    # Load evaluation model
+    # Create the evaluation model
     evaluator = ChessEvaluationCNN(latent_dim=args.latent_dim)
-    evaluator.load_state_dict(torch.load(args.path, map_location=device, weights_only=True))
+
+    # Load an existing model to continue training
+    if args.existing_model:
+        evaluator.load_state_dict(torch.load(args.existing_model, map_location=device, weights_only=True))
 
     print("Training evaluation model...")
 

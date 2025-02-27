@@ -21,7 +21,7 @@ def train_autoencoder(
         plot_save_path='models/plots/autoencoder_loss.png'
 ):
     """
-    Train a pure autoencoder (no KL). We'll do:
+    Train a pure autoencoder (no KL).
       - board reconstruction: BCE
       - metadata reconstruction: MSE
       - Weighted sum: total_loss = board_bce + 0.1 * metadata_mse
@@ -192,6 +192,10 @@ if __name__ == '__main__':
                         help='Number of training epochs')
     parser.add_argument('--latent-dim', type=int, default=64,
                         help='Dimension of latent space')
+    parser.add_argument('--path', type=str, required=True,
+                        help='Path to save the model to')
+    parser.add_argument('--existing-model', type=str, default=None,
+                        help='Path to an existing model to continue training')
     args = parser.parse_args()
 
     # Create necessary directories
@@ -224,10 +228,14 @@ if __name__ == '__main__':
     # Create model
     model = ChessAutoencoder(latent_dim=args.latent_dim)
 
+    if args.existing_model:
+        model.load_state_dict(torch.load(args.existing_model, map_location=device))
+
     train_autoencoder(
         model,
         train_loader,
         val_loader,
         num_epochs=args.epochs,
-        device=device
+        device=device,
+        model_save_path=args.path,
     )
