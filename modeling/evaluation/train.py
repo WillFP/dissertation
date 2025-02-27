@@ -191,8 +191,8 @@ def train_evaluator(
         model_save_path='models/best_eval_model.pt',
         plot_save_path='models/plots/eval_loss.png',
         weight_decay=0.01,
-        scheduler_patience=5,
-        scheduler_factor=0.1,
+        scheduler_patience=20,
+        scheduler_factor=0.9,
         early_stop_patience=0,
         precomputed_dataset=False
 ):
@@ -333,8 +333,9 @@ def train_evaluator(
     plt.savefig(plot_save_path)
     plt.close()
 
+    torch.save(evaluator.state_dict(), model_save_path)
     print(f"Training complete. Best val loss: {best_loss:.4f}")
-    return train_losses, val_losses
+    print(f"Saved final model to: {model_save_path}")
 
 
 if __name__ == '__main__':
