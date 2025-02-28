@@ -1,0 +1,1 @@
+python modeling/evaluation/train.py --batch-size=4096 --precompute-latents --epochs=5000 --latent-dim=128 --autoencoder-path=models/autoencoder_250k.pt --path=models/eval_conv_250k.pt --data datasets/positions_250k.h5 --num-workers=16 --learning-rate=0.0007 --min-learning-rate=0.000001 > output.log 2>&1 &

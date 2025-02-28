@@ -187,12 +187,11 @@ def train_evaluator(
         val_loader=None,
         num_epochs=20,
         learning_rate=1e-4,
+        min_learning_rate=1e-7,
         device='cpu',
         model_save_path='models/best_eval_model.pt',
         plot_save_path='models/plots/eval_loss.png',
         weight_decay=0.01,
-        scheduler_patience=20,
-        scheduler_factor=0.9,
         early_stop_patience=0,
         precomputed_dataset=False
 ):
@@ -210,8 +209,6 @@ def train_evaluator(
         model_save_path (str): Path to save best model
         plot_save_path (str): Path to save loss plot
         weight_decay (float): Weight decay for optimizer
-        scheduler_patience (int): Patience for LR scheduler
-        scheduler_factor (float): Factor to reduce LR
         early_stop_patience (int): Patience for early stopping
         precomputed_dataset (bool): Whether latents are precomputed
     """
@@ -231,9 +228,21 @@ def train_evaluator(
         weight_decay=weight_decay
     )
 
+    """
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='min', patience=scheduler_patience,
-        factor=scheduler_factor, verbose=True
+        optimizer, mode='min', patience=20,
+        min_lr=min_learning_rate,
+        factor=0.9
+    )
+    """
+
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer,
+        max_lr=learning_rate,
+        pct_start=0.3,
+        div_factor=25.0,
+        final_div_factor=1e4,
+        anneal_strategy='cos'
     )
 
     best_loss = float('inf')
@@ -304,9 +313,12 @@ def train_evaluator(
             best_loss = epoch_val_loss
             epochs_no_improve = 0
             torch.save(evaluator.state_dict(), model_save_path)
-            print(f"Epoch {epoch + 1}: new best val loss = {epoch_val_loss:.4f}. Model saved.")
+            print(f"Epoch {epoch + 1}: new best val loss = {epoch_val_loss:.4f}.")
         else:
             epochs_no_improve += 1
+
+        if epoch % 20 == 0:
+            torch.save(evaluator.state_dict(), model_save_path)
 
         if 0 < early_stop_patience <= epochs_no_improve:
             print(f"Early stopping at epoch {epoch + 1} (no improvement for {early_stop_patience} epochs).")
@@ -358,6 +370,8 @@ if __name__ == '__main__':
                         help='Path to an existing model to continue training')
     parser.add_argument('--learning-rate', type=float, default=1e-3,
                         help='Learning rate for the optimizer')
+    parser.add_argument('--min-learning-rate', type=float, default=1e-7,
+                        help='Minimum learning rate for the optimizer')
     parser.add_argument('--num-workers', type=int, default=4,
                         help='Number of data loading workers')
     parser.add_argument('--precompute-latents', action='store_true',
@@ -401,11 +415,11 @@ if __name__ == '__main__':
         print("Precomputing latent vectors for faster training...")
         os.makedirs("cache", exist_ok=True)
 
-        autoencoder_hash = hashlib.md5(
-            torch.cat([p.flatten() for p in autoencoder.parameters()]).cpu().detach().numpy().tobytes()
-        ).hexdigest()[:8]
-        train_cache_file = f"cache/latent_train_{args.latent_dim}_{autoencoder_hash}.pt"
-        val_cache_file = f"cache/latent_val_{args.latent_dim}_{autoencoder_hash}.pt"
+        length = dataset.length
+        train_cache_file = f"cache/latent_train_{args.latent_dim}_{length}.pt"
+        val_cache_file = f"cache/latent_val_{args.latent_dim}_{length}.pt"
+
+        print(f"Searching for latents in cache: {train_cache_file} and {val_cache_file}")
 
         encode_batch_size = args.encode_batch_size if args.encode_batch_size else min(args.batch_size * 4, 2048)
         train_latent_dataset = create_latent_dataset(train_dataset, autoencoder, encode_batch_size, device,
@@ -469,6 +483,7 @@ if __name__ == '__main__':
         val_loader=val_loader,
         num_epochs=args.epochs,
         learning_rate=args.learning_rate,
+        min_learning_rate=args.min_learning_rate,
         device=device,
         model_save_path=args.path,
         precomputed_dataset=precomputed_dataset

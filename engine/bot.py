@@ -1,7 +1,5 @@
 import torch
-
 from preprocess import fen_to_tensor
-
 import chess
 from typing import Optional
 from modeling.autoencoder.predict import load_model as load_autoencoder
@@ -9,22 +7,19 @@ from modeling.evaluation.predict import load_model as load_evaluator, predict_po
 
 
 def load_models(autoencoder_path: str, evaluation_path: str):
+    """Load the autoencoder and evaluator models onto the appropriate device."""
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-
     print(f"Loading autoencoder from {autoencoder_path}...")
     autoencoder = load_autoencoder(autoencoder_path, latent_dim=128, device=device)
-
     print(f"Loading evaluator from {evaluation_path}...")
     evaluator = load_evaluator(evaluation_path, latent_dim=128, device=device)
-
     print("Models loaded successfully.")
-
     return autoencoder, evaluator
 
 
 def predict_fen(fen, autoencoder, evaluator):
+    """Evaluate a chess position using the CNN, returning a score from the current player's perspective."""
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-
     board, metadata = fen_to_tensor(fen)
     evaluation = predict_position(
         evaluator,
@@ -33,13 +28,22 @@ def predict_fen(fen, autoencoder, evaluator):
         torch.FloatTensor(metadata),
         device=device
     )
-    score = evaluation.item()
-
-    return score
+    return evaluation.item()
 
 
-def get_best_move(fen: str, is_white: bool, autoencoder, evaluator) -> Optional[chess.Move]:
-    """Minimax with alpha-beta pruning using only neural network evaluations."""
+def get_best_move(fen: str, autoencoder, evaluator) -> Optional[chess.Move]:
+    """
+    Find the best move for the side to move in the given FEN using minimax with alpha-beta pruning,
+    relying solely on CNN evaluations.
+
+    Args:
+        fen (str): The position in FEN notation, where the side to move is the engine's side.
+        autoencoder: The loaded autoencoder model.
+        evaluator: The loaded evaluator model.
+
+    Returns:
+        Optional[chess.Move]: The best move, or None if no legal moves exist.
+    """
     board = chess.Board(fen)
     if not board.legal_moves:
         return None
@@ -47,19 +51,19 @@ def get_best_move(fen: str, is_white: bool, autoencoder, evaluator) -> Optional[
     depth = 3
     transposition_table = {}
 
-    def order_moves(board: chess.Board) -> list[chess.Move]:
-        """Order moves using game rules without any position evaluation."""
-        return sorted(
-            board.legal_moves,
-            key=lambda m: (
-                board.is_capture(m),  # Captures first
-                bool(m.promotion),  # Promotions next
-                board.is_check()  # Checks next
-            ),
-            reverse=True
-        )
-
     def alpha_beta(b: chess.Board, d: int, alpha: float, beta: float) -> float:
+        """
+        Perform minimax search with alpha-beta pruning, evaluating from the current player's perspective.
+
+        Args:
+            b (chess.Board): The current board position.
+            d (int): Remaining depth.
+            alpha (float): Alpha value for pruning.
+            beta (float): Beta value for pruning.
+
+        Returns:
+            float: The evaluation score from the current player's perspective.
+        """
         fen_key = b.fen()
         if fen_key in transposition_table:
             return transposition_table[fen_key]
@@ -67,49 +71,35 @@ def get_best_move(fen: str, is_white: bool, autoencoder, evaluator) -> Optional[
         if d == 0 or b.is_game_over():
             return predict_fen(fen_key, autoencoder, evaluator)
 
-        is_maximizing = b.turn == is_white
-        best = -float('inf') if is_maximizing else float('inf')
-
-        for move in order_moves(b):
+        best = -float('inf')
+        for move in b.legal_moves:  # No move ordering
             b.push(move)
-            eval = alpha_beta(b, d - 1, alpha, beta)
+            eval = -alpha_beta(b, d - 1, -beta, -alpha)  # Negate to switch perspective
             b.pop()
-
-            if is_maximizing:
-                best = max(best, eval)
-                alpha = max(alpha, best)
-            else:
-                best = min(best, eval)
-                beta = min(beta, best)
-
-            if beta <= alpha:
+            best = max(best, eval)
+            alpha = max(alpha, eval)
+            if alpha >= beta:
                 break
-
         transposition_table[fen_key] = best
         return best
 
+    alpha = -float('inf')
+    beta = float('inf')
     best_move = None
-    best_eval = -float('inf') if is_white else float('inf')
-    alpha, beta = -float('inf'), float('inf')
+    best_eval = -float('inf')
 
-    for move in order_moves(board):
+    for move in board.legal_moves:  # No move ordering
         board.push(move)
-        eval = alpha_beta(board, depth - 1, alpha, beta)
+        opponent_eval = alpha_beta(board, depth - 1, -beta, -alpha)
         board.pop()
-
-        print(f"Move {move.uci()} score: {eval:.3f}")
-
-        if (is_white and eval > best_eval) or (not is_white and eval < best_eval):
-            best_eval = eval
+        our_eval = -opponent_eval  # Negate to get the engine's perspective
+        print(f"Move {move.uci()} score: {our_eval:.3f}")
+        if our_eval > best_eval:
+            best_eval = our_eval
             best_move = move
-            print(f"New best: {move.uci()} ({eval:.3f})")
-
-            if is_white:
-                alpha = max(alpha, eval)
-            else:
-                beta = min(beta, eval)
-
-            if alpha >= beta:
-                break
+            print(f"New best: {move.uci()} ({our_eval:.3f})")
+        alpha = max(alpha, our_eval)
+        if alpha >= beta:
+            break
 
     return best_move

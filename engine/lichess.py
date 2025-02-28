@@ -62,7 +62,7 @@ class LichessBot:
         board = self._reconstruct_board(event['moves'])
 
         if board.turn == self.color and event['status'] == 'started':
-            self.make_move(game_id, board.fen(), is_white=(self.color == chess.WHITE))
+            self.make_move(game_id, board.fen())
 
     def _reconstruct_board(self, moves_str: str) -> chess.Board:
         """Reconstruct a chess board from a moves string."""
@@ -72,10 +72,10 @@ class LichessBot:
                 board.push_uci(move)
         return board
 
-    def make_move(self, game_id: str, fen: str, is_white: bool):
+    def make_move(self, game_id: str, fen: str):
         """Calculate and execute the best move for the current position."""
         try:
-            move = get_best_move(fen, is_white, self.autoencoder, self.evaluator)
+            move = get_best_move(fen, self.autoencoder, self.evaluator)
             if not move:
                 print("No legal moves available.")
                 return
