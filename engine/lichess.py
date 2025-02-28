@@ -55,7 +55,7 @@ class LichessBot:
         self.color = chess.WHITE if event['white']['id'] == bot_id else chess.BLACK
 
         if not event['state']['moves'] and self.color == chess.WHITE:
-            self.make_move(game_id, chess.STARTING_FEN, is_white=True)
+            self.make_move(game_id, chess.STARTING_FEN)
 
     def _handle_game_state_event(self, event: dict, game_id: str):
         """Handle ongoing game state updates."""
