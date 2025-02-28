@@ -2,9 +2,9 @@ import argparse
 import os
 import time
 from functools import partial
-import hashlib
 
 import torch
+from torch import nn
 from torch.utils.data import DataLoader, TensorDataset, random_split
 from torch.utils.data._utils.collate import default_collate
 
@@ -13,35 +13,33 @@ from modeling.dataset import ChessDataset
 from modeling.evaluation import ChessEvaluationCNN
 
 
-def chess_position_loss(predicted, actual):
+def chess_position_loss(predicted, actual, delta=1.0, sign_penalty=25.0):
     """
-    Custom loss function for chess position evaluation using pure PyTorch operations.
+    Improved loss function for chess position evaluation using PyTorch.
 
     Args:
         predicted (torch.Tensor): Predicted evaluation scores
         actual (torch.Tensor): Actual evaluation scores
+        delta (float): Delta parameter for Huber loss (default: 1.0)
+        sign_penalty (float): Penalty for sign errors (default: 25.0)
 
     Returns:
-        torch.Tensor: Mean loss value with added numerical stability
+        torch.Tensor: Mean loss value
     """
     predicted = predicted.float()
     actual = actual.float()
+
+    # Huber loss
+    huber_loss = nn.HuberLoss(reduction='none', delta=delta)(predicted, actual)
 
     # Sign error penalty
     sign_error = (predicted * actual) < 0
     sign_error = sign_error.float()
 
-    # Base squared error loss, scaled down
-    base_loss = torch.pow(predicted - actual, 2) / 400.0
+    # Total loss
+    total_loss = huber_loss + sign_error * sign_penalty
 
-    # Magnitude difference with sigmoid scaling
-    magnitude_diff = torch.abs(predicted - actual)
-    scaled_magnitude = 2.0 * torch.sigmoid(magnitude_diff / 20.0)
-
-    # Combined loss with sign penalty
-    total_loss = (base_loss * scaled_magnitude) + (sign_error * 25.0)
-
-    return torch.mean(total_loss) + 1e-8
+    return torch.mean(total_loss)
 
 
 def create_latent_dataset(dataset, autoencoder, batch_size, device, num_workers=8, cache_file=None):
@@ -239,6 +237,8 @@ def train_evaluator(
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer,
         max_lr=learning_rate,
+        epochs=num_epochs,
+        steps_per_epoch=len(train_loader.dataset) // train_loader.batch_size,
         pct_start=0.3,
         div_factor=25.0,
         final_div_factor=1e4,
