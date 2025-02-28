@@ -189,7 +189,7 @@ def train_evaluator(
         device='cpu',
         model_save_path='models/best_eval_model.pt',
         plot_save_path='models/plots/eval_loss.png',
-        weight_decay=0.01,
+        weight_decay=0.0001,
         early_stop_patience=0,
         precomputed_dataset=False
 ):
@@ -220,7 +220,7 @@ def train_evaluator(
         autoencoder = autoencoder.to(device)
         autoencoder.eval()
 
-    optimizer = torch.optim.Adam(
+    optimizer = torch.optim.AdamW(
         evaluator.parameters(),
         lr=learning_rate,
         weight_decay=weight_decay
@@ -249,6 +249,20 @@ def train_evaluator(
     train_losses = []
     val_losses = []
     epochs_no_improve = 0
+
+    def save_model():
+        torch.save(evaluator.state_dict(), model_save_path)
+        epochs_range = range(1, len(train_losses) + 1)
+        plt.figure(figsize=(10, 6))
+        plt.plot(epochs_range, train_losses, label='Train Loss')
+        plt.plot(epochs_range, val_losses, label='Val Loss')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Evaluation Model Training vs Validation Loss')
+        plt.legend()
+        plt.grid(True)
+        plt.savefig(plot_save_path)
+        plt.close()
 
     for epoch in range(num_epochs):
         epoch_start_time = time.time()
@@ -312,13 +326,13 @@ def train_evaluator(
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             epochs_no_improve = 0
-            torch.save(evaluator.state_dict(), model_save_path)
+            save_model()
             print(f"Epoch {epoch + 1}: new best val loss = {epoch_val_loss:.4f}.")
         else:
             epochs_no_improve += 1
 
         if epoch % 20 == 0:
-            torch.save(evaluator.state_dict(), model_save_path)
+            save_model()
 
         if 0 < early_stop_patience <= epochs_no_improve:
             print(f"Early stopping at epoch {epoch + 1} (no improvement for {early_stop_patience} epochs).")
@@ -333,19 +347,7 @@ def train_evaluator(
         if device == 'cuda':
             torch.cuda.empty_cache()
 
-    epochs_range = range(1, len(train_losses) + 1)
-    plt.figure(figsize=(10, 6))
-    plt.plot(epochs_range, train_losses, label='Train Loss')
-    plt.plot(epochs_range, val_losses, label='Val Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Evaluation Model Training vs Validation Loss')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(plot_save_path)
-    plt.close()
-
-    torch.save(evaluator.state_dict(), model_save_path)
+    save_model()
     print(f"Training complete. Best val loss: {best_loss:.4f}")
     print(f"Saved final model to: {model_save_path}")
 

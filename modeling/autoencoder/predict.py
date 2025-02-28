@@ -40,7 +40,7 @@ def encode_position(model, board, metadata, device='cpu'):
         latent: Latent space representation (a single vector)
     """
     model.eval()
-    with torch.no_grad():
+    with torch.inference_mode():
         board = board.unsqueeze(0).to(device)  # Add batch dimension: (1, 12, 8, 8)
         metadata = metadata.unsqueeze(0).to(device)  # (1, 5)
         latent = model.encode(board, metadata)  # shape (1, latent_dim)

@@ -26,7 +26,7 @@ def load_model(model_path, latent_dim=64, device='cpu'):
 def predict_position(model, autoencoder, board, metadata, device='cpu'):
     model.eval()
     autoencoder.eval()
-    with torch.no_grad():
+    with torch.inference_mode():
         board = board
         metadata = metadata
         latent = torch.FloatTensor(encode_position(autoencoder, board, metadata, device)).to(device)
