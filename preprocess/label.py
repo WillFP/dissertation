@@ -6,18 +6,18 @@ import chess
 import chess.engine
 import chess.pgn
 import h5py
-from tqdm import tqdm
 import numpy as np
+from tqdm import tqdm
 
 from preprocess.encode import fen_to_tensor
 
 # Configuration
 STOCKFISH_PATH = "/opt/homebrew/bin/stockfish"
-EVAL_DEPTH = 18
+EVAL_DEPTH = 15
 POSITIONS_PER_GAME = 5
 RANDOM_SEED = 42
-NUM_WORKERS = mp.cpu_count() // 2  # Use half available cores
-CHUNK_SIZE = 50  # Games per batch
+NUM_WORKERS = mp.cpu_count()
+CHUNK_SIZE = 100  # Games per batch
 STOCKFISH_THREADS = 1  # Configure Stockfish threads per worker
 
 
@@ -78,7 +78,7 @@ def init_worker():
 
     rng = np.random.default_rng(RANDOM_SEED + worker_id)
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-    engine.configure({"Threads": STOCKFISH_THREADS})
+    engine.configure({"Threads": STOCKFISH_THREADS, "Hash": 4})
 
 
 def worker_process(positions_chunk):
