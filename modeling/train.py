@@ -91,9 +91,10 @@ def train_evaluator(
     train_losses = []
     val_losses = []
 
-    def save_model():
+    def save_model(graphs_only=False):
         """Save the model state and plot losses."""
-        torch.save(evaluator.state_dict(), model_save_path)
+        if not graphs_only:
+            torch.save(evaluator.state_dict(), model_save_path)
         epochs_range = range(1, len(train_losses) + 1)
         plt.figure(figsize=(10, 6))
         plt.plot(epochs_range, train_losses, label='Train Loss')
@@ -174,7 +175,7 @@ def train_evaluator(
             save_model()
             print(f"Epoch {epoch + 1}: New best val loss = {epoch_val_loss:.4f}")
         elif (epoch + 1) % 20 == 0:
-            save_model()
+            save_model(graphs_only=True)
 
         print(
             f"Epoch {epoch + 1}/{num_epochs} completed in {epoch_time:.2f}s | "
