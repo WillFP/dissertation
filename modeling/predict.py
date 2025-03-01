@@ -12,9 +12,6 @@ def load_model(model_path, device='cpu'):
 
 
 def predict_position(model, board, metadata):
-    model.eval()
     with torch.inference_mode():
-        board = board
-        metadata = metadata
         prediction = model(board, metadata)
     return prediction.cpu()
