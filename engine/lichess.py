@@ -1,11 +1,11 @@
 import argparse
-
-import berserk
-import chess
 import time
 from typing import Optional
 
-from engine.bot import get_best_move, load_model
+import berserk
+import chess
+
+from engine.bot import ChessBot
 
 
 class LichessBot:
@@ -15,7 +15,7 @@ class LichessBot:
         self.client = berserk.Client(self.session)
         self.current_game: Optional[str] = None
         self.color: Optional[chess.Color] = None
-        self.evaluator = load_model(model_path)
+        self.engine = ChessBot(model_path)
 
     def handle_game_stream(self):
         """Main loop to handle incoming game events and challenges."""
@@ -73,7 +73,7 @@ class LichessBot:
     def make_move(self, game_id: str, fen: str):
         """Calculate and execute the best move for the current position."""
         try:
-            move = get_best_move(fen, self.evaluator)
+            move = self.engine.get_best_move(fen)
             if not move:
                 print("No legal moves available.")
                 return
