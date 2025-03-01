@@ -2,37 +2,31 @@ import torch
 from preprocess import fen_to_tensor
 import chess
 from typing import Optional
-from modeling.autoencoder.predict import load_model as load_autoencoder
-from modeling.evaluation.predict import load_model as load_evaluator, predict_position
+from modeling.predict import load_model as load_evaluator, predict_position
 
 
-def load_models(autoencoder_path: str, evaluation_path: str):
+def load_model(path: str):
     """
-    Load the autoencoder and evaluator models onto the appropriate device.
+    Load the model from the given path.
 
     Args:
-        autoencoder_path (str): Path to the trained autoencoder model file.
-        evaluation_path (str): Path to the trained evaluator model file.
+        path (str): Path to the trained evaluator model file.
 
     Returns:
-        tuple: Loaded autoencoder and evaluator models.
     """
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-    print(f"Loading autoencoder from {autoencoder_path}...")
-    autoencoder = load_autoencoder(autoencoder_path, latent_dim=128, device=device)
-    print(f"Loading evaluator from {evaluation_path}...")
-    evaluator = load_evaluator(evaluation_path, latent_dim=128, device=device)
-    print("Models loaded successfully.")
-    return autoencoder, evaluator
+    print(f"Loading evaluator from {path}...")
+    evaluator = load_evaluator(path, device=device)
+    print("Evaluator loaded.")
+    return evaluator
 
 
-def predict_fen(fen, autoencoder, evaluator):
+def predict_fen(fen, evaluator):
     """
     Evaluate a chess position using the CNN, returning a score from White's perspective.
 
     Args:
         fen (str): The position in FEN notation.
-        autoencoder: The loaded autoencoder model.
         evaluator: The loaded evaluator model.
 
     Returns:
@@ -42,22 +36,19 @@ def predict_fen(fen, autoencoder, evaluator):
     board, metadata = fen_to_tensor(fen)
     evaluation = predict_position(
         evaluator,
-        autoencoder,
-        torch.FloatTensor(board).permute(2, 0, 1),
-        torch.FloatTensor(metadata),
-        device=device
+        torch.FloatTensor(board).permute(2, 0, 1).to(device),
+        torch.FloatTensor(metadata).to(device),
     )
     return evaluation.item()
 
 
-def get_best_move(fen: str, autoencoder, evaluator) -> Optional[chess.Move]:
+def get_best_move(fen: str, evaluator) -> Optional[chess.Move]:
     """
     Find the best move for the side to move in the given FEN using minimax with alpha-beta pruning,
     relying solely on CNN evaluations from White's perspective.
 
     Args:
         fen (str): The position in FEN notation, where the side to move is the engine's side.
-        autoencoder: The loaded autoencoder model.
         evaluator: The loaded evaluator model.
 
     Returns:
@@ -88,7 +79,7 @@ def get_best_move(fen: str, autoencoder, evaluator) -> Optional[chess.Move]:
             return transposition_table[fen_key]
 
         if d == 0 or b.is_game_over():
-            eval = predict_fen(fen_key, autoencoder, evaluator)
+            eval = predict_fen(fen_key, evaluator)
             transposition_table[fen_key] = eval
             return eval
 

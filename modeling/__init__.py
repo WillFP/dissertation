@@ -1,3 +1,4 @@
 from .dataset import *
-from .autoencoder import *
-from .evaluation import *
+from .predict import *
+from .train import *
+from .model import *
