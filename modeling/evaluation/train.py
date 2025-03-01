@@ -13,7 +13,7 @@ from modeling.dataset import ChessDataset
 from modeling.evaluation import ChessEvaluationCNN
 
 
-def chess_position_loss(predicted, actual, delta=1.0, sign_penalty=25.0):
+def chess_position_loss(predicted, actual, delta=5.0, sign_penalty=25.0):
     """
     Improved loss function for chess position evaluation using PyTorch.
 
@@ -238,7 +238,7 @@ def train_evaluator(
         optimizer,
         max_lr=learning_rate,
         epochs=num_epochs,
-        steps_per_epoch=len(train_loader.dataset) // train_loader.batch_size,
+        steps_per_epoch=len(train_loader),
         pct_start=0.3,
         div_factor=25.0,
         final_div_factor=1e4,

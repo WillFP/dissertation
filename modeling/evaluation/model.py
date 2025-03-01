@@ -27,8 +27,10 @@ class ChessEvaluationCNN(nn.Module):
         self.features = nn.Sequential(
             ResidualBlock(1, 64),    # Output: (batch_size, 64, 128)
             nn.MaxPool1d(2),         # Output: (batch_size, 64, 64)
+            nn.Dropout(0.3),
             ResidualBlock(64, 128),  # Output: (batch_size, 128, 64)
             nn.MaxPool1d(2),         # Output: (batch_size, 128, 32)
+            nn.Dropout(0.3),
             ResidualBlock(128, 256), # Output: (batch_size, 256, 32)
             nn.AdaptiveAvgPool1d(1)  # Output: (batch_size, 256, 1)
         )
