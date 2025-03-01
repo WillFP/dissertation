@@ -13,7 +13,7 @@ from torch.utils.data._utils.collate import default_collate
 from tqdm import tqdm
 
 
-def chess_position_loss(predicted, actual, delta=5.0, sign_penalty=25.0):
+def chess_position_loss(predicted, actual, delta=5.0, sign_penalty=10.0):
     """
     Improved loss function for chess position evaluation using PyTorch.
     """

@@ -2,6 +2,36 @@ import torch
 import torch.nn as nn
 
 
+class ResidualBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, stride=stride)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.LeakyReLU(0.2)
+        self.dropout = nn.Dropout2d(0.2)
+
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride),
+                nn.BatchNorm2d(out_channels)
+            )
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.shortcut(x) + out
+        return out
+
+
 class ChessEvaluator(nn.Module):
     def __init__(self):
         super().__init__()
@@ -11,14 +41,17 @@ class ChessEvaluator(nn.Module):
             nn.LeakyReLU(0.2),
             nn.BatchNorm2d(64),
             nn.Dropout2d(0.2),
+            ResidualBlock(64, 64),  # First residual block, no downsampling
             nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2),
             nn.LeakyReLU(0.2),
             nn.BatchNorm2d(128),
             nn.Dropout2d(0.2),
+            ResidualBlock(128, 128),  # Second residual block, maintain 128 channels
             nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2),
             nn.LeakyReLU(0.2),
             nn.BatchNorm2d(256),
             nn.Dropout2d(0.2),
+            ResidualBlock(256, 256),  # Third residual block, maintain 256 channels
             nn.Conv2d(256, 512, kernel_size=2),
             nn.LeakyReLU(0.2),
             nn.BatchNorm2d(512),
@@ -39,10 +72,10 @@ class ChessEvaluator(nn.Module):
             nn.BatchNorm1d(128)
         )
 
-        self.fc_encode = nn.Linear(1024 + 128, 128)
+        self.fc_encode = nn.Linear(1024 + 128, 256)
 
         self.regressor = nn.Sequential(
-            nn.Linear(128, 64),
+            nn.Linear(256, 64),
             nn.LeakyReLU(0.01),
             nn.BatchNorm1d(64),
             nn.Dropout(0.2),
