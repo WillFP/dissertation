@@ -33,13 +33,22 @@ def get_stockfish_evaluation(board, engine, depth=EVAL_DEPTH):
 
 def extract_positions(game):
     """
-    Extract FEN positions from a game (mainline).
+    Extract FEN positions from a game (mainline),
+    skipping captures and only including positions after the first five moves.
     """
     positions = []
     board = game.board()
+    move_count = 0
+
     for move in game.mainline_moves():
+        is_capture = board.is_capture(move)
+
         board.push(move)
-        positions.append(board.fen())
+        move_count += 1
+
+        if move_count > 5 and not is_capture:
+            positions.append(board.fen())
+
     return positions
 
 
