@@ -41,10 +41,6 @@ def count_duplicates(dataset, batch_size=10000):
 
     unique_boards = len(seen_boards)
 
-    print(f"Unique boards: {unique_boards}")
-    print(f"Duplicate boards: {duplicates}")
-    print(f"Duplicates: {duplicates / total_samples:.2%}")
-
     return unique_boards, duplicates
 
 
@@ -66,7 +62,7 @@ if __name__ == '__main__':
     unique_boards, duplicates = count_duplicates(dataset)
     print(f"Unique boards: {unique_boards}")
     print(f"Duplicate boards: {duplicates}")
-    print(f"Duplicates: {(len(dataset) - unique_boards) / len(dataset):.2%}")
+    print(f"Duplicate rate: {(len(dataset) - unique_boards) / len(dataset):.2%}")
 
     # Print basic statistics for insight into the evaluations
     print(f"Min evaluation: {dataset.evaluations.min().item()}")
