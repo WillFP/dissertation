@@ -1,6 +1,52 @@
 import argparse
+
 import matplotlib.pyplot as plt
+
 from modeling import ChessDataset
+
+
+def count_duplicates(dataset, batch_size=10000):
+    """
+    Count duplicate chess positions in a large ChessDataset efficiently
+    using batched processing and hash tables.
+
+    Args:
+        dataset: ChessDataset instance
+        batch_size: Number of samples to process at once
+
+    Returns:
+        tuple: (unique_boards, duplicates)
+    """
+    from tqdm import tqdm
+
+    print(f"Dataset loaded. Checking {len(dataset)} samples.")
+
+    seen_boards = {}
+    duplicates = 0
+    total_samples = len(dataset)
+
+    # Process in batches to avoid memory issues
+    for start_idx in tqdm(range(0, total_samples, batch_size)):
+        end_idx = min(start_idx + batch_size, total_samples)
+
+        batch_boards = dataset.boards[start_idx:end_idx]
+
+        for i, board in enumerate(batch_boards):
+            board_hash = hash(board.cpu().numpy().tobytes())
+
+            if board_hash in seen_boards:
+                duplicates += 1
+            else:
+                seen_boards[board_hash] = 1
+
+    unique_boards = len(seen_boards)
+
+    print(f"Unique boards: {unique_boards}")
+    print(f"Duplicate boards: {duplicates}")
+    print(f"Duplicates: {duplicates / total_samples:.2%}")
+
+    return unique_boards, duplicates
+
 
 if __name__ == '__main__':
     # Parse command-line arguments
@@ -15,6 +61,12 @@ if __name__ == '__main__':
 
     # Confirm dataset is loaded with the number of samples
     print(f"Dataset loaded. Checking {len(dataset)} samples.")
+
+    # Count duplicate positions
+    unique_boards, duplicates = count_duplicates(dataset)
+    print(f"Unique boards: {unique_boards}")
+    print(f"Duplicate boards: {duplicates}")
+    print(f"Duplicates: {(len(dataset) - unique_boards) / len(dataset):.2%}")
 
     # Print basic statistics for insight into the evaluations
     print(f"Min evaluation: {dataset.evaluations.min().item()}")
