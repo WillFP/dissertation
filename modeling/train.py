@@ -13,7 +13,7 @@ from torch.utils.data._utils.collate import default_collate
 from tqdm import tqdm
 
 
-def chess_position_loss(predicted, actual, delta=5.0, sign_penalty=10.0):
+def chess_position_loss(predicted, actual, delta=5.0, sign_penalty=5.0):
     """
     Improved loss function for chess position evaluation using PyTorch.
     """
@@ -129,12 +129,14 @@ def train_evaluator(
                     pred_eval = evaluator(board, metadata)
                     loss = chess_position_loss(pred_eval, evaluation)
                 scaler.scale(loss).backward()
+                torch.nn.utils.clip_grad_norm_(evaluator.parameters(), max_norm=1.0)
                 scaler.step(optimizer)
                 scaler.update()
             else:
                 pred_eval = evaluator(board, metadata)
                 loss = chess_position_loss(pred_eval, evaluation)
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(evaluator.parameters(), max_norm=1.0)
                 optimizer.step()
 
             scheduler.step()
@@ -232,7 +234,8 @@ if __name__ == '__main__':
     # Load dataset
     print("Loading dataset...")
     dataset = ChessDataset(args.data)
-    train_size = int(0.8 * len(dataset))
+    # 90:10 test/train split because data sets are large and expensive to create
+    train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 

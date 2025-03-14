@@ -37,24 +37,24 @@ class ChessEvaluator(nn.Module):
         super().__init__()
 
         self.board_encoder = nn.Sequential(
-            nn.Conv2d(12, 64, kernel_size=3, padding=1),
-            nn.LeakyReLU(0.2),
+            nn.Conv2d(12, 64, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(64),
-            nn.Dropout2d(0.2),
-            ResidualBlock(64, 64),  # First residual block, no downsampling
-            nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2),
             nn.LeakyReLU(0.2),
+            nn.Dropout2d(0.2),
+            ResidualBlock(64, 64),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(128),
-            nn.Dropout2d(0.2),
-            ResidualBlock(128, 128),  # Second residual block, maintain 128 channels
-            nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2),
             nn.LeakyReLU(0.2),
+            nn.Dropout2d(0.2),
+            ResidualBlock(128, 128),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1, stride=2, bias=False),
             nn.BatchNorm2d(256),
-            nn.Dropout2d(0.2),
-            ResidualBlock(256, 256),  # Third residual block, maintain 256 channels
-            nn.Conv2d(256, 512, kernel_size=2),
             nn.LeakyReLU(0.2),
+            nn.Dropout2d(0.2),
+            ResidualBlock(256, 256),
+            nn.Conv2d(256, 512, kernel_size=2, bias=False),
             nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2),
             nn.Dropout2d(0.2),
             nn.Conv2d(512, 1024, kernel_size=1),
             nn.LeakyReLU(0.2),
@@ -62,17 +62,18 @@ class ChessEvaluator(nn.Module):
         )
 
         self.metadata_encoder = nn.Sequential(
-            nn.Linear(5, 64),
+            nn.Linear(5, 32),
             nn.LeakyReLU(0.2),
-            nn.BatchNorm1d(64),
-            nn.Dropout(0.2),
+            nn.BatchNorm1d(32),
 
-            nn.Linear(64, 128),
-            nn.LeakyReLU(0.2),
-            nn.BatchNorm1d(128)
+            #nn.Dropout(0.2),
+
+            #nn.Linear(64, 128),
+            #nn.LeakyReLU(0.2),
+            #nn.BatchNorm1d(128)
         )
 
-        self.fc_encode = nn.Linear(1024 + 128, 256)
+        self.fc_encode = nn.Linear(1024 + 32, 256)
 
         self.regressor = nn.Sequential(
             nn.Linear(256, 64),
