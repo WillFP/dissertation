@@ -87,7 +87,7 @@ def init_worker():
 
     rng = np.random.default_rng(RANDOM_SEED + worker_id)
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-    engine.configure({"Threads": STOCKFISH_THREADS, "Hash": 4})
+    engine.configure({"Threads": STOCKFISH_THREADS, "Hash": 1024})
 
 
 def worker_process(positions_chunk):
