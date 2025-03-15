@@ -68,7 +68,7 @@ if __name__ == '__main__':
     print(f"Min evaluation: {dataset.evaluations.min().item()}")
     print(f"Max evaluation: {dataset.evaluations.max().item()}")
     print(f"Mean evaluation: {dataset.evaluations.mean().item()}")
-    print(f"Std evaluation: {dataset.evaluations.std().item()}")
+    print(f"Standard deviation: {dataset.evaluations.std().item()}")
 
     # Plot the evaluation distribution
     plt.hist(dataset.evaluations, bins=100)
