@@ -187,7 +187,7 @@ def main(pgn_path, hdf5_path, positions):
         chunk_iter = pool.imap_unordered(worker_process, chunk_generator(), chunksize=1)
 
         chunk_count = 0
-        with tqdm(desc="Processing game chunks", unit="chunk") as pbar:
+        with tqdm(desc="Processing game chunks with Stockfish", unit="chunk") as pbar:
             for result in chunk_iter:
                 chunk_count += 1
                 pbar.update(1)
