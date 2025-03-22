@@ -19,8 +19,6 @@ def count_duplicates(dataset, batch_size=10000):
     """
     from tqdm import tqdm
 
-    print(f"Dataset loaded. Checking {len(dataset)} samples.")
-
     seen_boards = {}
     duplicates = 0
     total_samples = len(dataset)

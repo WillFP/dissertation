@@ -5,7 +5,7 @@ from typing import Optional
 import berserk
 import chess
 
-from engine.bot import ChessBot
+from engine.cnn_bot import CNNChessBot
 
 
 class LichessBot:
@@ -15,7 +15,7 @@ class LichessBot:
         self.client = berserk.Client(self.session)
         self.current_game: Optional[str] = None
         self.color: Optional[chess.Color] = None
-        self.engine = ChessBot(model_path)
+        self.engine = CNNChessBot(model_path)
 
     def handle_game_stream(self):
         """Main loop to handle incoming game events and challenges."""
