@@ -15,49 +15,36 @@ POSITIONS_PER_GAME = 10 # Use higher positions per game compared to stockfish to
 RANDOM_SEED = 42
 NUM_WORKERS = mp.cpu_count()
 CHUNK_SIZE = 5  # Games per batch
-NUM_SIMULATIONS = 200
 
-
-def simulate_game(board, max_moves=100, rng=None):
-    """
-    Simulate a game from the current board position until the end or max_moves.
-    Returns the game result: '1-0' (white wins), '0-1' (black wins), or '1/2-1/2' (draw).
-    """
-    if rng is None:
-        rng = np.random.default_rng(RANDOM_SEED)
-    move_count = 0
-    while not board.is_game_over() and move_count < max_moves:
-        legal_moves = list(board.legal_moves)
-        if not legal_moves:
-            return "1/2-1/2"
-        move = rng.choice(legal_moves)
-        board.push(move)
-        move_count += 1
-    if board.is_game_over():
-        return board.result()
-    else:
-        return "1/2-1/2"  # Treat as draw if max_moves reached
-
-
-def mcts_evaluation(fen, num_simulations, rng, max_moves=200):
-    """
-    Evaluate a position using MCTS with random simulations.
-    Returns the evaluation score as p_white_win - p_black_win, ranging from -100 to 100.
-    """
+def mcts_evaluation(fen, rng, num_simulations=150, max_moves=100):
     board = chess.Board(fen)
+
     white_wins = 0
     black_wins = 0
+
     for _ in range(num_simulations):
-        temp_board = board.copy()
-        result = simulate_game(temp_board, max_moves, rng)
+        move_count = 0
+
+        while not board.is_game_over() and move_count < max_moves:
+            legal_moves = list(board.pseudo_legal_moves)
+            move = legal_moves[rng.integers(0, len(legal_moves))]
+            board.push(move)
+            move_count += 1
+
+        result = board.result()
+
         if result == "1-0":
             white_wins += 1
         elif result == "0-1":
             black_wins += 1
+
+        for _ in range(move_count):
+            board.pop()
+
     p_white_win = white_wins / num_simulations
     p_black_win = black_wins / num_simulations
-    evaluation = p_white_win - p_black_win
-    return evaluation * 100
+
+    return (p_white_win - p_black_win) * 100
 
 
 def extract_positions(game):
@@ -126,7 +113,7 @@ def worker_process(positions_chunk):
             continue
         selected_fens = rng.choice(positions, POSITIONS_PER_GAME, replace=False)
         for fen in selected_fens:
-            evaluation = mcts_evaluation(fen, NUM_SIMULATIONS, rng)
+            evaluation = mcts_evaluation(fen, rng)
             tensor, meta = fen_to_tensor(fen)
             results['boards'].append(tensor)
             results['metadata'].append(meta)
