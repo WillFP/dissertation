@@ -26,7 +26,7 @@ def mcts_evaluation(fen, rng, num_simulations=150, max_moves=100):
         move_count = 0
 
         while not board.is_game_over() and move_count < max_moves:
-            legal_moves = list(board.pseudo_legal_moves)
+            legal_moves = list(board.legal_moves)
             move = legal_moves[rng.integers(0, len(legal_moves))]
             board.push(move)
             move_count += 1
