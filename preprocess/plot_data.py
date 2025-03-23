@@ -68,8 +68,13 @@ if __name__ == '__main__':
     print(f"Mean evaluation: {dataset.evaluations.mean().item()}")
     print(f"Standard deviation: {dataset.evaluations.std().item()}")
 
+    # Chess-specific statistics
+    # A checkmate is -100 or 100
+    print(f"Checkmate evaluations: {len(dataset.evaluations[dataset.evaluations.abs() == 100])}")
+    print(f"Near-checkmate evaluations: {len(dataset.evaluations[dataset.evaluations.abs() >= 90])}")
+
     # Plot the evaluation distribution
-    plt.hist(dataset.evaluations, bins=100)
+    plt.hist(dataset.evaluations, bins=200)
     plt.xlabel('Evaluation')
     plt.ylabel('Count')
     plt.title('Evaluation Distribution')
