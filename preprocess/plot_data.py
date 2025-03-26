@@ -70,8 +70,10 @@ if __name__ == '__main__':
 
     # Chess-specific statistics
     # A checkmate is -100 or 100
-    print(f"Checkmate evaluations: {len(dataset.evaluations[dataset.evaluations.abs() == 100])}")
-    print(f"Near-checkmate evaluations: {len(dataset.evaluations[dataset.evaluations.abs() >= 90])}")
+    checkmate_evaluations = len(dataset.evaluations[dataset.evaluations.abs() == 100])
+    near_checkmate_evaluations = len(dataset.evaluations[dataset.evaluations.abs() >= 90])  - checkmate_evaluations
+    print(f"Checkmate evaluations: {checkmate_evaluations}")
+    print(f"Near-checkmate evaluations: {near_checkmate_evaluations}")
 
     # Plot the evaluation distribution
     plt.hist(dataset.evaluations, bins=200)
