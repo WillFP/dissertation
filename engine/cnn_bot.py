@@ -6,8 +6,8 @@ from preprocess import fen_to_tensor
 
 
 class CNNChessBot(ChessBot):
-    def __init__(self, path: str):
-        super().__init__()
+    def __init__(self, path: str, log=False):
+        super().__init__(log=log)
         self.device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
         self.allocated_board = None
         self.allocated_metadata = None

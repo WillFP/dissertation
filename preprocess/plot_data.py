@@ -47,6 +47,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train a chess evaluation model')
     parser.add_argument('--data', type=str, required=True,
                         help='Path to HDF5 file with labeled positions')
+    parser.add_argument('--save', type=str, required=False,
+                        help='Path to save the plot')
+    parser.add_argument('--title', type=str, required=False,
+                        help='Title of the plot')
     args = parser.parse_args()
 
     # Load the dataset
@@ -76,8 +80,10 @@ if __name__ == '__main__':
     print(f"Near-checkmate evaluations: {near_checkmate_evaluations}")
 
     # Plot the evaluation distribution
-    plt.hist(dataset.evaluations, bins=200)
+    plt.hist(dataset.evaluations, bins=100)
     plt.xlabel('Evaluation')
     plt.ylabel('Count')
-    plt.title('Evaluation Distribution')
+    plt.title(args.title if args.title else "Evaluation Distribution")
+    if args.save:
+        plt.savefig(args.save)
     plt.show()

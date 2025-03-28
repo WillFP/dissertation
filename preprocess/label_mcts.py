@@ -16,7 +16,7 @@ RANDOM_SEED = 42
 NUM_WORKERS = mp.cpu_count()
 CHUNK_SIZE = 5  # Games per batch
 
-def mcts_evaluation(fen, rng, num_simulations=150, max_moves=100):
+def mcts_evaluation(fen, rng, num_simulations=300, max_moves=50):
     board = chess.Board(fen)
 
     white_wins = 0

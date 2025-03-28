@@ -1,17 +1,14 @@
 from typing import Optional
 
 import chess
-import torch
-
-from modeling.predict import load_model as load_evaluator
-from preprocess import fen_to_tensor
 
 
 class ChessBot:
-    def __init__(self):
+    def __init__(self, log=False):
         """
         Initialize the ChessBot
         """
+        self.log = log
 
     def predict_fen(self, fen: str) -> float:
         raise NotImplementedError("Subclasses must implement this method")
@@ -91,11 +88,13 @@ class ChessBot:
                 board.push(move)
                 evaluation = alpha_beta(board, depth - 1, alpha, beta)
                 board.pop()
-                print(f"Move {move.uci()} score: {evaluation:.3f}")
+                if self.log:
+                    print(f"Move {move.uci()} score: {evaluation:.3f}")
                 if evaluation > best_eval:
                     best_eval = evaluation
                     best_move = move
-                    print(f"New best: {move.uci()} ({evaluation:.3f})")
+                    if self.log:
+                        print(f"New best: {move.uci()} ({evaluation:.3f})")
                 alpha = max(alpha, evaluation)
         else:  # board.turn == chess.BLACK
             best_eval = float('inf')  # Black minimizes
@@ -103,11 +102,13 @@ class ChessBot:
                 board.push(move)
                 evaluation = alpha_beta(board, depth - 1, alpha, beta)
                 board.pop()
-                print(f"Move {move.uci()} score: {evaluation:.3f}")
+                if self.log:
+                    print(f"Move {move.uci()} score: {evaluation:.3f}")
                 if evaluation < best_eval:
                     best_eval = evaluation
                     best_move = move
-                    print(f"New best: {move.uci()} ({evaluation:.3f})")
+                    if self.log:
+                        print(f"New best: {move.uci()} ({evaluation:.3f})")
                 beta = min(beta, evaluation)
 
         return best_move

@@ -93,7 +93,7 @@ def main():
 
     args = parser.parse_args()
 
-    api_token = "lip_4oQxjrYKYzKxrBEYlunq"
+    api_token = "lip_uOVXFaLVX99unHcNavZl"
     bot = LichessBot(api_token, args.model)
 
     while True:
