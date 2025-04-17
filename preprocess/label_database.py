@@ -20,7 +20,6 @@ def compute_evaluation(position_data):
     - cp scores are clipped to [-99, 99].
     - Returns a score from White's perspective, within [-100, 100].
     """
-    fen = position_data["fen"]
     evals = position_data["evals"]
     if not evals:
         raise ValueError("No evaluations for position")
@@ -28,27 +27,18 @@ def compute_evaluation(position_data):
     max_knodes_eval = max(evals, key=lambda e: e["knodes"])
     first_pv = max_knodes_eval["pvs"][0]
 
-    board = chess.Board(fen)
-
     if "mate" in first_pv:
         mate = first_pv["mate"]
         if mate > 0:
             n = mate
-            if board.turn == chess.WHITE:
-                evaluation = 100 - 1 * n  # e.g., mate in 1 = 99.99, mate in 5 = 99.95
-            else:
-                evaluation = -(100 - 1 * n)
+            evaluation = 100 - 1 * (n - 1)  # e.g., mate in 1 = 99.99, mate in 5 = 99.95
         else:
             n = -mate
-            if board.turn == chess.WHITE:
-                evaluation = -(100 - 1 * n)
-            else:
-                evaluation = 100 - 1 * n
+            evaluation = -(100 - 1 * (n - 1))
+
     else:
         cp = first_pv["cp"]
         evaluation = cp / 100.0
-        if board.turn == chess.BLACK:
-            evaluation = -evaluation
         evaluation = np.clip(evaluation, -75, 75)
 
     return evaluation

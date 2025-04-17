@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from preprocess import fen_to_tensor
+from preprocess import fen_to_tensor, augment_board
 
 
 def visualize_reconstruction(board, save_path=None):
@@ -29,7 +29,7 @@ def visualize_reconstruction(board, save_path=None):
     visual = board_to_visual(board)
 
     plt.imshow(visual, cmap='RdBu', vmin=-6, vmax=6)
-    plt.title('Encoded Position')
+    #lt.title('Encoded Position')
     plt.axis('off')
 
     plt.tight_layout()
@@ -42,5 +42,18 @@ def visualize_reconstruction(board, save_path=None):
 
 
 if __name__ == '__main__':
+    # Convert single tensor to batch format (4D)
     tensor, metadata = fen_to_tensor("2q5/3B1Pk1/1K6/P3P3/p4Rb1/4nP1P/1pp5/6N1 w - - 0 1")
-    visualize_reconstruction(tensor, "fen.png")
+    visualize_reconstruction(tensor, "encoded.png")
+
+    # Add batch dimension to make it 4D for NumPy array
+    batch_tensor = np.expand_dims(tensor, axis=0)  # Adds dimension at position 0
+
+    # Augment the batched tensor
+    augmented_batch = augment_board(batch_tensor)
+
+    # Extract the first (and only) augmented tensor
+    augmented_tensor = augmented_batch[0]
+
+    # Visualize the augmented tensor
+    visualize_reconstruction(augmented_tensor, "augmented.png")
