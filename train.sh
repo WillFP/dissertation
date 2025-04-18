@@ -12,7 +12,7 @@ python modeling/train.py \
 python modeling/train.py \
   --batch-size=2048 \
   --epochs=5000 \
-  --path=models/precomputed_100m.pt \
-  --data=datasets/precomputed_100m.h5 \
+  --path=models/mcts_50m.pt \
+  --data=datasets/mcts_50m.h5 \
   --num-workers=16 \
   --learning-rate=0.0015
