@@ -10,11 +10,10 @@ from tqdm import tqdm
 
 from preprocess.encode import fen_to_tensor
 
-# Configuration
-POSITIONS_PER_GAME = 10 # Use higher positions per game compared to stockfish to capture more end-game
+POSITIONS_PER_GAME = 10
 RANDOM_SEED = 42
 NUM_WORKERS = mp.cpu_count()
-CHUNK_SIZE = 5  # Games per batch
+CHUNK_SIZE = 5
 
 def mcts_evaluation(fen, rng, num_simulations=300, max_moves=50):
     board = chess.Board(fen)

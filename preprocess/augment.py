@@ -3,32 +3,14 @@ import numpy as np
 
 
 def augment_board(board):
-    """
-    Augment the chess board by flipping it vertically and swapping piece colors.
-
-    Parameters:
-    - board: NumPy array of shape (N, 8, 8, 12)
-
-    Returns:
-    - Augmented board: NumPy array of shape (N, 8, 8, 12)
-    """
-    # Flip vertically (reverse rows)
+    # flip vertically (reverse rows)
     flipped = board[:, ::-1, :, :]
-    # Swap colors: channels 0-5 (white) to 6-11 (black) and vice versa
+    # swap colors: channels 0-5 (white) to 6-11 (black) and vice versa
     augmented = flipped[:, :, :, [6, 7, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5]]
     return augmented
 
 
 def augment_metadata(metadata):
-    """
-    Augment the metadata by swapping castling rights and inverting the turn.
-
-    Parameters:
-    - metadata: NumPy array of shape (N, 5)
-
-    Returns:
-    - Augmented metadata: NumPy array of shape (N, 5)
-    """
     # Swap castling rights and invert turn
     augmented = np.column_stack([
         metadata[:, 2],  # black_kingside
@@ -41,15 +23,6 @@ def augment_metadata(metadata):
 
 
 def augment_evaluation(evaluation):
-    """
-    Augment the evaluation by negating the score.
-
-    Parameters:
-    - evaluation: NumPy array of shape (N,)
-
-    Returns:
-    - Augmented evaluation: NumPy array of shape (N,)
-    """
     return -evaluation
 
 
@@ -63,23 +36,19 @@ def create_augmented_h5(input_path, output_path):
     """
     # Open the input .h5 file in read mode
     with h5py.File(input_path, 'r') as f_in:
-        # Load the datasets
         boards = f_in['boards'][:]
         metadata = f_in['metadata'][:]
         evaluations = f_in['evaluations'][:]
 
-        # Ensure evaluations is a 1D array
         if evaluations.ndim == 2 and evaluations.shape[1] == 1:
             evaluations = evaluations.squeeze(1)
 
         print(f"Original shapes: boards {boards.shape}, metadata {metadata.shape}, evaluations {evaluations.shape}")
 
-        # Perform augmentation
         aug_boards = augment_board(boards)
         aug_metadata = augment_metadata(metadata)
         aug_evaluations = augment_evaluation(evaluations)
 
-        # Concatenate original and augmented data along the batch dimension
         all_boards = np.concatenate([boards, aug_boards], axis=0)
         all_metadata = np.concatenate([metadata, aug_metadata], axis=0)
         all_evaluations = np.concatenate([evaluations, aug_evaluations], axis=0)
@@ -87,7 +56,6 @@ def create_augmented_h5(input_path, output_path):
         print(
             f"Augmented shapes: boards {all_boards.shape}, metadata {all_metadata.shape}, evaluations {all_evaluations.shape}")
 
-        # Write to the output .h5 file
         with h5py.File(output_path, 'w') as f_out:
             f_out.create_dataset('boards', data=all_boards, dtype='float32', compression='gzip')
             f_out.create_dataset('metadata', data=all_metadata, dtype='float32', compression='gzip')

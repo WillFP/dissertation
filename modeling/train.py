@@ -195,10 +195,8 @@ def train_evaluator(
 
 
 if __name__ == '__main__':
-    # Set multiprocessing start method
     multiprocessing.set_start_method('spawn')
 
-    # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Train a chess evaluation model')
     parser.add_argument('--data', type=str, required=True,
                         help='Path to HDF5 file with labeled positions')
@@ -216,30 +214,24 @@ if __name__ == '__main__':
                         help='Number of data loading workers')
     args = parser.parse_args()
 
-    # Create directories
     os.makedirs('models', exist_ok=True)
     os.makedirs('models/plots', exist_ok=True)
 
-    # Determine device
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     print(f"Using device: {device}")
 
-    # Optimize CUDA settings
     if device == 'cuda':
         torch.cuda.set_device(0)
         torch.backends.cuda.matmul.allow_tf32 = True
         torch.backends.cudnn.allow_tf32 = True
         torch.backends.cudnn.benchmark = True
 
-    # Load dataset
     print("Loading dataset...")
     dataset = ChessDataset(args.data)
-    # 90:10 test/train split because data sets are large and expensive to create
     train_size = int(0.9 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    # Configure DataLoaders
     pin_memory = device != 'cpu'
     train_loader = DataLoader(
         train_dataset,
@@ -261,13 +253,11 @@ if __name__ == '__main__':
     print(f"Dataset loaded. Training with {len(train_dataset)} samples, validating with {len(val_dataset)} samples.")
     print(f"Using batch size: {args.batch_size}, workers: {args.num_workers}")
 
-    # Initialize model
     print("Loading evaluation model...")
     evaluator = ChessEvaluator()
     if args.existing_model:
         evaluator.load_state_dict(torch.load(args.existing_model, map_location=device, weights_only=True))
 
-    # Train the model
     print("Training evaluation model...")
     train_evaluator(
         evaluator=evaluator,

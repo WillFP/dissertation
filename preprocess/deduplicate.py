@@ -15,18 +15,15 @@ def deduplicate_chess_dataset(input_path, output_path, batch_size=10000):
     """
     # Open the input .h5 file in read mode
     with h5py.File(input_path, 'r') as f_in:
-        # Load the datasets
         boards = f_in['boards'][:]
         metadata = f_in['metadata'][:]
         evaluations = f_in['evaluations'][:]
 
-        # Ensure evaluations is a 1D array
         if evaluations.ndim == 2 and evaluations.shape[1] == 1:
             evaluations = evaluations.squeeze(1)
 
         print(f"Original shapes: boards {boards.shape}, metadata {metadata.shape}, evaluations {evaluations.shape}")
 
-        # Process in batches to identify unique positions
         seen_boards = {}
         unique_indices = []
         total_samples = boards.shape[0]
@@ -45,10 +42,8 @@ def deduplicate_chess_dataset(input_path, output_path, batch_size=10000):
                     seen_boards[board_hash] = idx
                     unique_indices.append(idx)
 
-        # Sort indices to maintain original order
         unique_indices.sort()
 
-        # Create deduplicated datasets
         dedup_boards = boards[unique_indices]
         dedup_metadata = metadata[unique_indices]
         dedup_evaluations = evaluations[unique_indices]
@@ -58,7 +53,6 @@ def deduplicate_chess_dataset(input_path, output_path, batch_size=10000):
         print(
             f"Removed {total_samples - len(unique_indices)} duplicate positions ({(total_samples - len(unique_indices)) / total_samples:.2%})")
 
-        # Write to the output .h5 file
         with h5py.File(output_path, 'w') as f_out:
             f_out.create_dataset('boards', data=dedup_boards, dtype='float32', compression='gzip')
             f_out.create_dataset('metadata', data=dedup_metadata, dtype='float32', compression='gzip')

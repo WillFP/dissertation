@@ -5,9 +5,6 @@ import chess
 
 class ChessBot:
     def __init__(self, log=False):
-        """
-        Initialize the ChessBot
-        """
         self.log = log
 
     def predict_fen(self, fen: str) -> float:
@@ -28,8 +25,10 @@ class ChessBot:
         if not board.legal_moves:
             return None
 
-        depth = 3  # Search depth
-        transposition_table = {}  # For memoization
+        depth = 3
+
+
+        transposition_table = {}
 
         def alpha_beta(b: chess.Board, d: int, alpha: float, beta: float) -> float:
             """
@@ -65,7 +64,7 @@ class ChessBot:
                         break
                 transposition_table[fen_key] = best
                 return best
-            else:  # b.turn == chess.BLACK
+            else:
                 best = float('inf')  # Minimize for Black
                 for move in b.legal_moves:
                     b.push(move)

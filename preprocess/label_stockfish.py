@@ -11,19 +11,17 @@ from tqdm import tqdm
 
 from preprocess.encode import fen_to_tensor
 
-# Configuration
 STOCKFISH_PATH = "/opt/homebrew/bin/stockfish"
 EVAL_DEPTH = 15
 POSITIONS_PER_GAME = 5
 RANDOM_SEED = 42
 NUM_WORKERS = mp.cpu_count()
-CHUNK_SIZE = 100  # Games per batch
-STOCKFISH_THREADS = 1  # Configure Stockfish threads per worker
+CHUNK_SIZE = 100
+STOCKFISH_THREADS = 1
 
 
 def get_stockfish_evaluation(board, engine, depth=EVAL_DEPTH):
     """
-    Get Stockfish evaluation in centipawns (white perspective).
     Returns: float evaluation score where positive = white advantage.
     """
     info = engine.analyse(board, chess.engine.Limit(depth=depth))
@@ -32,10 +30,6 @@ def get_stockfish_evaluation(board, engine, depth=EVAL_DEPTH):
 
 
 def extract_positions(game):
-    """
-    Extract FEN positions from a game (mainline),
-    skipping captures and only including positions after the first five moves.
-    """
     positions = []
     board = game.board()
     move_count = 0
@@ -91,14 +85,6 @@ def init_worker():
 
 
 def worker_process(positions_chunk):
-    """
-    Worker process function that:
-      - Takes a list of game-positions
-      - Selects random positions
-      - Evaluates them with Stockfish
-      - Converts each to a tensor
-      - Returns aggregated results
-    """
     global engine, rng
 
     results = {
@@ -126,9 +112,6 @@ def worker_process(positions_chunk):
 
 
 def merge_results(temp_files, output_file):
-    """
-    Merge the temporary HDF5 files into a final single file.
-    """
     with h5py.File(output_file, 'w') as hf:
         hf.create_dataset('boards', shape=(0, 8, 8, 12),
                           maxshape=(None, 8, 8, 12),
@@ -166,15 +149,11 @@ def main(pgn_path, hdf5_path, positions):
     temp_dir = Path("temp_labels")
     temp_dir.mkdir(exist_ok=True)
 
-    # Determine how many games to read if 'positions' is total desired positions
     max_games = positions // POSITIONS_PER_GAME if positions else None
 
-    # Build a generator of positions from each game
     game_gen = game_reader(pgn_path, max_games=max_games)
 
-    # Prepare worker pool. Each process calls init_worker() once.
     with mp.Pool(processes=NUM_WORKERS, initializer=init_worker) as pool:
-        # Create an iterator that yields a list of up to CHUNK_SIZE games each time
         def chunk_generator():
             while True:
                 chunk = list(islice(game_gen, CHUNK_SIZE))
@@ -183,7 +162,6 @@ def main(pgn_path, hdf5_path, positions):
                 yield chunk
 
         temp_files = []
-        # Distribute to workers in an unordered fashion
         chunk_iter = pool.imap_unordered(worker_process, chunk_generator(), chunksize=1)
 
         chunk_count = 0
@@ -204,7 +182,6 @@ def main(pgn_path, hdf5_path, positions):
                 temp_files.append(str(temp_file))
                 pbar.set_postfix({'positions': len(result['boards'])})
 
-        # Merge results
         merge_results(temp_files, hdf5_path)
 
     print(f"Completed labeling. Final dataset: {hdf5_path}")
