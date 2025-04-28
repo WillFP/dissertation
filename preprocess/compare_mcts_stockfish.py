@@ -11,6 +11,9 @@ STOCKFISH_PATH = "/opt/homebrew/bin/stockfish"  # Adjust this path if needed
 POSITIONS_PER_GAME = 10
 RANDOM_SEED = 42
 
+SIMULATIONS=300
+MAX_MOVES=50
+
 
 def stockfish_evaluation(board, engine):
     """Get Stockfish evaluation in pawns (white perspective)."""
@@ -19,7 +22,7 @@ def stockfish_evaluation(board, engine):
     return score / 100.0  # Convert from centipawns to pawns
 
 
-def mcts_evaluation(fen, rng, num_simulations=300, max_moves=50):
+def mcts_evaluation(fen, rng, num_simulations=SIMULATIONS, max_moves=MAX_MOVES):
     board = chess.Board(fen)
 
     white_wins = 0
@@ -104,22 +107,28 @@ def main(pgn_path, positions):
                 game_count += 1
                 pbar.set_postfix({'games': game_count})  # Show games processed
 
+    # Compute and print correlation
+    correlation = np.corrcoef(stockfish_evals, mcts_evals)[0, 1]
+    print(f"Pearson correlation coefficient: {correlation:.3f}")
+
     # Create scatter plot
     plt.figure(figsize=(10, 6))
     plt.scatter(stockfish_evals, mcts_evals, alpha=0.5)
     plt.xlabel('Stockfish Evaluation')
     plt.ylabel('MCTS Evaluation')
-    plt.title('Comparison of Stockfish and MCTS Evaluations')
+    plt.title(f'Comparison of Stockfish and MCTS Evaluations: s={SIMULATIONS}, m={MAX_MOVES}')
     plt.axhline(0, color='gray', linestyle='--')
     plt.axvline(0, color='gray', linestyle='--')
-    plt.show()
 
-    # Compute and print correlation
-    if stockfish_evals and mcts_evals:
-        correlation = np.corrcoef(stockfish_evals, mcts_evals)[0, 1]
-        print(f"Pearson correlation coefficient: {correlation:.3f}")
-    else:
-        print("No positions were collected.")
+    # Show the range from -15,-15 to 15,15
+    plt.xlim(-15, 15)
+    plt.ylim(-15, 15)
+
+    # Put the correlation coefficient on the plot
+    plt.text(0.95, 0.95, f'Correlation: {correlation:.3f}', transform=plt.gca().transAxes,
+             fontsize=12, verticalalignment='top', horizontalalignment='right')
+
+    plt.show()
 
     # Clean up
     engine.quit()

@@ -10,9 +10,9 @@ python modeling/train.py \
     #> output.log 2>&1 &
 
 python modeling/train.py \
-  --batch-size=2048 \
+  --batch-size=256 \
   --epochs=5000 \
-  --path=models/mcts_50m.pt \
-  --data=datasets/mcts_50m.h5 \
+  --path=models/mixed_51m.pt \
+  --data=datasets/mixed_51m.h5 \
   --num-workers=16 \
-  --learning-rate=0.0015
+  --learning-rate=0.0002
